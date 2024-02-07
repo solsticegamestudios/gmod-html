@@ -71,6 +71,31 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 
 	// Launch GarrysMod's main function from this process. We needed this so the "main" process could provide sandbox information above.
 	HMODULE hLauncher = LoadLibraryA("launcher.dll");
+
+	/*
+	// If we ever wanted to support launching on the main branch (Awesomium version), we'd use this
+	char pathEnvWithBin[MAX_PATH] = { 0 };
+	snprintf(pathEnvWithBin, sizeof(pathEnvWithBin), "PATH=%s\\bin\\;%s", executable_dir.c_str(), getenv("PATH"));
+	putenv(pathEnvWithBin);
+
+	// Launch GarrysMod's main function from this process. We needed this so the "main" process could provide sandbox information above.
+	// 0x0008 = LOAD_WITH_ALTERED_SEARCH_PATH
+	HMODULE hLauncher = LoadLibraryExA("bin\\launcher.dll", NULL, 0x0008);
+	if (hLauncher == (HMODULE) 0x0) {
+		HINSTANCE *lpBuffer = &hInstance;
+		DWORD dwLanguageId = 0x400;
+		HMODULE Arguments = hLauncher;
+		DWORD DVar2 = GetLastError();
+		FormatMessageA(0x1300, NULL, DVar2, dwLanguageId, (LPSTR)lpBuffer, (DWORD)hLauncher, (va_list*)Arguments);
+
+		char errorMsg[764];
+		snprintf(errorMsg, sizeof(errorMsg), "Failed to load the launcher DLL:\n\n%s", "TODO: Error Msg");
+		MessageBoxA(NULL, errorMsg, "Launcher Error", 0);
+		LocalFree(hInstance);
+		return 0;
+	}
+	*/
+
 	void* mainFn = static_cast<void*>(GetProcAddress(hLauncher, "LauncherMain"));
 	return (static_cast<FuncLauncherMain>(mainFn))(hInstance, hPrevInstance, lpCmdLine, nCmdShow);
 }

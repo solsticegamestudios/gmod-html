@@ -17,10 +17,9 @@ char has_namespace_support = 0x0;
 void calc_has_namespace_support()
 {
     __pid_t clonedProcessPid;
-    __pid_t _Var1;
+    __pid_t stoppedProcessPid;
     int unshareSuccessOrFail;
-    int *piVar3;
-    int status;
+    int statusCode;
 
     clonedProcessPid = fork();
     if (clonedProcessPid == -1)
@@ -39,10 +38,10 @@ void calc_has_namespace_support()
             fprintf(stderr, "unshare(CLONE_NEWUSER) failed, unprivileged usernamespaces are probably disabled\n");
             exit(1);
         }
-        _Var1 = waitpid(clonedProcessPid, &status, 0);
-        if (clonedProcessPid == _Var1)
+        stoppedProcessPid = waitpid(clonedProcessPid, &statusCode, 0);
+        if (clonedProcessPid == stoppedProcessPid)
         {
-            has_namespace_support = status == '\0';
+            has_namespace_support = statusCode == '\0';
             return;
         }
         puts("waitpid failed... assuming unprivileged usernamespaces disabled");
@@ -80,9 +79,6 @@ int main(int argc, char **argv)
         }
     }
     chdir(realPathOut);
-    // char a[2000];
-    // getcwd(a, 2000);
-    // printf("%s\n", a);
     void *launcherHandle = dlopen(LIBRARY_FILENAME, RTLD_NOW);
     if (launcherHandle == 0)
     {

@@ -18,6 +18,8 @@
 #include <filesystem>
 namespace fs = std::filesystem;
 
+#include <fstream>
+
 class ChromiumApp
 	: public CefApp
 {
@@ -356,9 +358,29 @@ IHtmlClient* ChromiumSystem::CreateClient( IHtmlClientListener* listener )
 	//windowInfo.shared_texture_enabled = true;
 #endif
 
+	unsigned int fps_max = 60;
+	std::ifstream fps_max_file("GMOD_CEF_FPS_MAX.txt");
+
+	if ( fps_max_file.is_open() ) {
+		std::string fps_max_env;
+		getline(fps_max_file, fps_max_env);
+
+		unsigned int fps_max_env_int = atoi(fps_max_env.c_str());
+
+		if (fps_max_env_int && fps_max_env_int >= 1 && fps_max_env_int <= 60 ) {
+			fps_max = fps_max_env_int;
+			LOG(INFO) << "GMOD_CEF_FPS_MAX: " << fps_max_env_int;
+		} else {
+			LOG(WARNING) << "GMOD_CEF_FPS_MAX INVALID: " << fps_max_env;
+		}
+
+		fps_max_file.close();
+		// Can't delete it because it may be used by other CEF processes. Shutdown may also be called more than once.
+	}
+
 	CefBrowserSettings browserSettings;
 	CefString( &browserSettings.default_encoding ).FromString( "UTF-8" );
-	browserSettings.windowless_frame_rate = 60;
+	browserSettings.windowless_frame_rate = fps_max;
 	browserSettings.javascript_access_clipboard = STATE_DISABLED;
 	browserSettings.javascript_close_windows = STATE_DISABLED;
 	browserSettings.webgl = STATE_ENABLED;

@@ -1,6 +1,7 @@
 #include <cstdlib>
 #include <string>
-#include <iostream>
+#include <fstream>
+#include <regex>
 
 #include <Windows.h>
 #include <shlwapi.h>
@@ -97,6 +98,29 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 		}
 
 		return err;
+	}
+
+	// Add GMOD_CEF_FPS_MAX / -chromium-fps-max
+	std::string fps_max = "";
+	std::string cmdLine = lpCmdLine;
+	
+	if (const char* fps_max_env = getenv("GMOD_CEF_FPS_MAX")) {
+		fps_max = fps_max_env;
+	} else if (strstr(cmdLine.c_str(), "-chromium-fps-max")) {
+		const std::regex fps_max_regex("-chromium-fps-max([^-]+)");
+		std::smatch fps_max_match;
+
+		if (std::regex_search(cmdLine, fps_max_match, fps_max_regex)) {
+			fps_max = fps_max_match[1].str();
+		}
+	}
+
+	// Write it to a file since APPARENTLY we lose the env var on Linux/macOS
+	std::remove("GMOD_CEF_FPS_MAX.txt");
+	if (fps_max != "") {
+		std::ofstream fps_max_file("GMOD_CEF_FPS_MAX.txt");
+		fps_max_file << fps_max;
+		fps_max_file.close();
 	}
 
 	return mainFn(hInstance, hPrevInstance, lpCmdLine, nCmdShow);

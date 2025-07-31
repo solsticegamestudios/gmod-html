@@ -7,6 +7,8 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <sched.h>
+#include <fstream>
+#include <regex>
 
 typedef int (*LauncherMain_t)(int, char**);
 
@@ -86,6 +88,33 @@ int main(int argc, char** argv)
 	if (!launcherMainFn) {
 		fprintf(stderr, "Failed to load the launcher entry proc\n");
 		return 1;
+	}
+
+	// Add GMOD_CEF_FPS_MAX / -chromium-fps-max
+	std::string fps_max = "";
+	std::string cmdLine = "";
+	for (int i = 1; i < argc; i++) {
+		cmdLine += std::string(argv[i]) + " ";
+	}
+
+	if (const char* fps_max_env = getenv("GMOD_CEF_FPS_MAX")) {
+		fps_max = fps_max_env;
+	}
+	else if (strstr(cmdLine.c_str(), "-chromium-fps-max")) {
+		const std::regex fps_max_regex("-chromium-fps-max([^-]+)");
+		std::smatch fps_max_match;
+
+		if (std::regex_search(cmdLine, fps_max_match, fps_max_regex)) {
+			fps_max = fps_max_match[1].str();
+		}
+	}
+
+	// Write it to a file since APPARENTLY we lose the env var on Linux/macOS
+	std::remove("GMOD_CEF_FPS_MAX.txt");
+	if (fps_max != "") {
+		std::ofstream fps_max_file("GMOD_CEF_FPS_MAX.txt");
+		fps_max_file << fps_max;
+		fps_max_file.close();
 	}
 
 	return launcherMainFn(argc, argv);

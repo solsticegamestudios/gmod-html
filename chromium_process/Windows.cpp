@@ -100,14 +100,14 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 		return err;
 	}
 
-	// Add GMOD_CEF_FPS_MAX / -chromium-fps-max
+	// Add GMOD_CEF_FPS_MAX / -chromium_fps_max
 	std::string fps_max = "";
 	std::string cmdLine = lpCmdLine;
-	
+
 	if (const char* fps_max_env = getenv("GMOD_CEF_FPS_MAX")) {
 		fps_max = fps_max_env;
-	} else if (strstr(cmdLine.c_str(), "-chromium-fps-max")) {
-		const std::regex fps_max_regex("-chromium-fps-max([^-]+)");
+	} else if (strstr(cmdLine.c_str(), "-chromium_fps_max")) {
+		const std::regex fps_max_regex("-chromium_fps_max([^-]+)");
 		std::smatch fps_max_match;
 
 		if (std::regex_search(cmdLine, fps_max_match, fps_max_regex)) {

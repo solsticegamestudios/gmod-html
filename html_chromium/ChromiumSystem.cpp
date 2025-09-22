@@ -281,9 +281,9 @@ bool ChromiumSystem::Init( const char* pBaseDir, IHtmlResourceHandler* pResource
 	std::string cefLockFilePath = cefCachePath + "/lockfile";
 
 	// Try to delete the lockfile. If we can't, it's still in use. Crashes could leave it behind
-	fs::remove( cefLockFilePath );
+	fs::remove( cefLockFilePath, rotateError );
 
-	if ( fs::exists( cefLockFilePath ) ) {
+	if ( rotateError || fs::exists( cefLockFilePath ) ) {
 		pResourceHandler->Message( "Skipping Chromium log rotation (lockfile exists)...\n" );
 
 		unsigned int multirunInstanceID = 0;

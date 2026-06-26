@@ -21,26 +21,6 @@ if(OS_LINUX OR OS_WINDOWS)
 	else()
 		add_executable(${TARGET} WIN32 ${SOURCES} ${RESOURCES})
 	endif()
-	if (DUMP_SYMS)
-		if(OS_LINUX OR OS_MAC)
-			add_custom_command(
-				TARGET ${TARGET}
-				POST_BUILD
-				COMMAND ${CMAKE_COMMAND} -E echo Dumping symbols for ${TARGET}
-				COMMAND "${DUMP_SYMS}" -s "${CMAKE_SOURCE_DIR}/syms" "$<TARGET_FILE:${TARGET}>"
-				COMMAND "${STRIP}" $STRIP_ARGS "$<TARGET_FILE:${TARGET}>"
-				VERBATIM
-			)
-		else()
-			add_custom_command(
-				TARGET ${TARGET}
-				POST_BUILD
-				COMMAND ${CMAKE_COMMAND} -E echo \"Dumping symbols for ${TARGET}\"
-				COMMAND "${DUMP_SYMS}" -s "${CMAKE_SOURCE_DIR}/syms" "$<TARGET_FILE:${TARGET}>"
-				VERBATIM
-			)
-		endif()
-	endif()
 
 	SET_EXECUTABLE_TARGET_PROPERTIES(${TARGET})
 	add_dependencies(${TARGET} libcef_dll_wrapper)
@@ -49,13 +29,16 @@ if(OS_LINUX OR OS_WINDOWS)
 
 	if(OS_LINUX)
 		install(TARGETS ${TARGET} DESTINATION "${INSTALL_OUT_DIR}/GarrysMod/bin/${CEF_PLATFORM}")
+		dump_symbols_register(TARGET ${TARGET} DESTINATION "${INSTALL_OUT_DIR}/GarrysMod/bin/${CEF_PLATFORM}" STRIP)
 		set_target_properties(${TARGET} PROPERTIES INSTALL_RPATH "$ORIGIN")
 		set_target_properties(${TARGET} PROPERTIES BUILD_WITH_INSTALL_RPATH TRUE)
 	else()
 		if(CMAKE_SIZEOF_VOID_P MATCHES 8)
 			install(TARGETS ${TARGET} DESTINATION "${INSTALL_OUT_DIR}/GarrysMod/bin/win64")
+			dump_symbols_register(TARGET ${TARGET} DESTINATION "${INSTALL_OUT_DIR}/GarrysMod/bin/win64")
 		else()
 			install(TARGETS ${TARGET} DESTINATION "${INSTALL_OUT_DIR}/GarrysMod/bin")
+			dump_symbols_register(TARGET ${TARGET} DESTINATION "${INSTALL_OUT_DIR}/GarrysMod/bin")
 		endif()
 
 		set_target_properties(${TARGET} PROPERTIES OUTPUT_NAME "gmod")
@@ -134,26 +117,6 @@ else()
 		file(WRITE ${_helper_info_plist} ${_plist_contents})
 
 		add_executable(${_helper_target} MACOSX_BUNDLE ${SOURCES})
-		if (DUMP_SYMS)
-			if(OS_LINUX OR OS_MAC)
-				add_custom_command(
-					TARGET ${_helper_target}
-					POST_BUILD
-					COMMAND ${CMAKE_COMMAND} -E echo \"Dumping symbols for ${_helper_target}\"
-					COMMAND "${DUMP_SYMS}" -s "${CMAKE_SOURCE_DIR}/syms" "$<TARGET_FILE:${_helper_target}>"
-					COMMAND "${STRIP}" $STRIP_ARGS "$<TARGET_FILE:${_helper_target}>"
-					VERBATIM
-				)
-			else()
-				add_custom_command(
-					TARGET ${_helper_target}
-					POST_BUILD
-					COMMAND ${CMAKE_COMMAND} -E echo \"Dumping symbols for ${_helper_target}\"
-					COMMAND "${DUMP_SYMS}" -s "${CMAKE_SOURCE_DIR}/syms" "$<TARGET_FILE:${_helper_target}>"
-					VERBATIM
-				)
-			endif()
-		endif()
 		SET_EXECUTABLE_TARGET_PROPERTIES(${_helper_target})
 		add_dependencies(${_helper_target} libcef_dll_wrapper)
 		target_link_libraries(${_helper_target} libcef_dll_wrapper ${CEF_STANDARD_LIBS})
@@ -162,6 +125,10 @@ else()
 			OUTPUT_NAME ${_helper_output_name})
 
 		install(TARGETS ${_helper_target} DESTINATION ${INSTALL_OUT_DIR}/GarrysMod_Signed.app/Contents/Frameworks)
+
+		# macOS helper installs as a bundle; symbol source is the binary inside it
+		dump_symbols_register(TARGET ${_helper_target} STRIP
+			BINARY "${INSTALL_OUT_DIR}/GarrysMod_Signed.app/Contents/Frameworks/${_helper_output_name}.app/Contents/MacOS/${_helper_output_name}")
 
 		if(USE_SANDBOX)
 			target_link_libraries(${_helper_target} cef_sandbox_lib)

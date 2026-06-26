@@ -22,26 +22,6 @@ if(OS_LINUX OR OS_WINDOWS)
 endif()
 
 add_library(${TARGET} SHARED ${SOURCES})
-if (DUMP_SYMS)
-	if(OS_LINUX OR OS_MAC)
-		add_custom_command(
-			TARGET ${TARGET}
-			POST_BUILD
-			COMMAND ${CMAKE_COMMAND} -E echo \"Dumping symbols for ${TARGET}\"
-			COMMAND "${DUMP_SYMS}" -s "${CMAKE_SOURCE_DIR}/syms" "$<TARGET_FILE:${TARGET}>"
-			COMMAND "${STRIP}" $STRIP_ARGS "$<TARGET_FILE:${TARGET}>"
-			VERBATIM
-		)
-	else()
-		add_custom_command(
-			TARGET ${TARGET}
-			POST_BUILD
-			COMMAND ${CMAKE_COMMAND} -E echo \"Dumping symbols for ${TARGET}\"
-			COMMAND "${DUMP_SYMS}" -s "${CMAKE_SOURCE_DIR}/syms" "$<TARGET_FILE:${TARGET}>"
-			VERBATIM
-		)
-	endif()
-endif()
 SET_LIBRARY_TARGET_PROPERTIES(${TARGET})
 add_dependencies(${TARGET} html libcef_dll_wrapper)
 
@@ -64,13 +44,17 @@ endif()
 if(OS_WINDOWS)
 	if(CMAKE_SIZEOF_VOID_P MATCHES 8)
 		install(TARGETS ${TARGET} DESTINATION "${INSTALL_OUT_DIR}/GarrysMod/bin/win64")
+		dump_symbols_register(TARGET ${TARGET} DESTINATION "${INSTALL_OUT_DIR}/GarrysMod/bin/win64")
 	else()
 		install(TARGETS ${TARGET} DESTINATION "${INSTALL_OUT_DIR}/GarrysMod/bin")
+		dump_symbols_register(TARGET ${TARGET} DESTINATION "${INSTALL_OUT_DIR}/GarrysMod/bin")
 	endif()
 elseif(OS_LINUX)
 	install(TARGETS ${TARGET} DESTINATION "${INSTALL_OUT_DIR}/GarrysMod/bin/${CEF_PLATFORM}")
+	dump_symbols_register(TARGET ${TARGET} DESTINATION "${INSTALL_OUT_DIR}/GarrysMod/bin/${CEF_PLATFORM}" STRIP)
 elseif(OS_MAC)
 	install(TARGETS ${TARGET} DESTINATION "${INSTALL_OUT_DIR}/GarrysMod_Signed.app/Contents/MacOS")
+	dump_symbols_register(TARGET ${TARGET} DESTINATION "${INSTALL_OUT_DIR}/GarrysMod_Signed.app/Contents/MacOS" STRIP)
 endif()
 
 # Always generate debug symbols

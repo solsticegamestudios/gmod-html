@@ -10,32 +10,14 @@ elseif("${CMAKE_SYSTEM_NAME}" STREQUAL "Darwin")
 endif()
 
 add_executable(${TARGET} ${SOURCES})
-if (DUMP_SYMS)
-	if(OS_LINUX OR OS_MAC)
-		add_custom_command(
-			TARGET ${TARGET}
-			POST_BUILD
-			COMMAND ${CMAKE_COMMAND} -E echo \"Dumping symbols for ${TARGET}\"
-			COMMAND "${DUMP_SYMS}" -s "${CMAKE_SOURCE_DIR}/syms" "$<TARGET_FILE:${TARGET}>"
-			COMMAND "${STRIP}" $STRIP_ARGS "$<TARGET_FILE:${TARGET}>"
-			VERBATIM
-		)
-	else()
-		add_custom_command(
-			TARGET ${TARGET}
-			POST_BUILD
-			COMMAND ${CMAKE_COMMAND} -E echo \"Dumping symbols for ${TARGET}\"
-			COMMAND "${DUMP_SYMS}" -s "${CMAKE_SOURCE_DIR}/syms" "$<TARGET_FILE:${TARGET}>"
-			VERBATIM
-		)
-	endif()
-endif()
 target_link_libraries(${TARGET} ${CMAKE_DL_LIBS})
 
 if("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux")
 	install(TARGETS ${TARGET} DESTINATION "${INSTALL_OUT_DIR}/GarrysMod/bin/${CEF_PLATFORM}")
+	dump_symbols_register(TARGET ${TARGET} DESTINATION "${INSTALL_OUT_DIR}/GarrysMod/bin/${CEF_PLATFORM}" STRIP)
 elseif("${CMAKE_SYSTEM_NAME}" STREQUAL "Darwin")
 	install(TARGETS ${TARGET} DESTINATION "${INSTALL_OUT_DIR}/GarrysMod_Signed.app/Contents/MacOS")
+	dump_symbols_register(TARGET ${TARGET} DESTINATION "${INSTALL_OUT_DIR}/GarrysMod_Signed.app/Contents/MacOS" STRIP)
 endif()
 
 set_target_properties(${TARGET} PROPERTIES INSTALL_RPATH "$ORIGIN")

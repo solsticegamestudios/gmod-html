@@ -36,9 +36,14 @@ elseif("${CMAKE_SYSTEM_NAME}" STREQUAL "Windows")
 endif()
 
 set(CEF_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/cef3/cef_binary_${CEF_VERSION}_${CEF_PLATFORM}")
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CEF_ROOT}/cmake")
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CEF_ROOT}/cmake" "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
+include(DumpSymbols)
 find_program(DUMP_SYMS dump_syms)
+
+find_package(CEF REQUIRED)
+
+# STRIP detection must come after find_package(CEF) sets OS_LINUX/OS_MAC
 if(DUMP_SYMS AND (OS_LINUX OR OS_MAC))
 	find_program(STRIP strip REQUIRED)
 	if(OS_LINUX)
@@ -48,8 +53,6 @@ if(DUMP_SYMS AND (OS_LINUX OR OS_MAC))
 	endif()
 endif()
 
-
-find_package(CEF REQUIRED)
 add_subdirectory(thirdparty/glad EXCLUDE_FROM_ALL)
 add_subdirectory(thirdparty/imgui-1.74 EXCLUDE_FROM_ALL)
 
@@ -92,5 +95,20 @@ endif()
 if("${CMAKE_SYSTEM_NAME}" STREQUAL "Windows" AND NOT (CMAKE_SIZEOF_VOID_P MATCHES 8))
 	add_subdirectory(gmod_32bit_redirector)
 endif()
+
+# CEF symbol distribution (sibling of CEF_ROOT) and the dist dir its binaries land in
+set(CEF_SYMBOL_DIR "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/cef3/cef_binary_${CEF_VERSION}_${CEF_PLATFORM}_release_symbols")
+if(OS_WINDOWS)
+	if(CMAKE_SIZEOF_VOID_P MATCHES 8)
+		set(CEF_DIST_BIN_DIR "${INSTALL_OUT_DIR}/GarrysMod/bin/win64")
+	else()
+		set(CEF_DIST_BIN_DIR "${INSTALL_OUT_DIR}/GarrysMod/bin")
+	endif()
+else()
+	set(CEF_DIST_BIN_DIR "${INSTALL_OUT_DIR}/GarrysMod/bin/${CEF_PLATFORM}")
+endif()
+
+# Add the install(SCRIPT) hook + standalone "symbols" target
+dump_symbols_finalize(CEF_SYMBOL_DIR "${CEF_SYMBOL_DIR}" CEF_BIN_DIR "${CEF_DIST_BIN_DIR}")
 
 PRINT_CEF_CONFIG()

@@ -19,13 +19,16 @@
 namespace fs = std::filesystem;
 
 #include <fstream>
+#include <sstream>
 
 #if _WIN32
+	#include <Windows.h>
 	#include <winreg.h>
 #endif
 
 #if __APPLE__
 	#include <Cocoa/Cocoa.h>
+	#include <crt_externs.h>
 #endif
 
 // https://stackoverflow.com/a/70753913
@@ -75,10 +78,64 @@ bool IsDarkMode() {
 }
 #endif
 
+// In the CEF browser process (the launched gmod.exe), our own command line carries the player's launch options
+static std::string GetProcessCommandLine()
+{
+#if defined( _WIN32 )
+	return std::string( GetCommandLineA() );
+#elif defined( __linux__ )
+	std::ifstream cmdlineFile( "/proc/self/cmdline", std::ios::binary );
+	std::stringstream ss;
+	ss << cmdlineFile.rdbuf();
+	std::string raw = ss.str();
+	for ( char& c : raw ) {
+		if ( c == '\0' ) {
+			c = ' ';
+		}
+	}
+	return raw;
+#elif defined( __APPLE__ )
+	std::string out;
+	int procArgc = *_NSGetArgc();
+	char** procArgv = *_NSGetArgv();
+	for ( int i = 0; i < procArgc; i++ ) {
+		out += procArgv[i];
+		out += ' ';
+	}
+	return out;
+#else
+	return "";
+#endif
+}
+
+// Read a -chromium_<x> <value> launch option, else the GMOD_CEF_<X> env var; empty if unset
+static std::string GetChromiumLaunchOption( const char* cmdlineFlag, const char* envVar )
+{
+	// Env takes precedence (matches the old launcher behavior)
+	if ( const char* env = getenv( envVar ) ) {
+		return env;
+	}
+
+	std::istringstream iss( GetProcessCommandLine() );
+	std::string token;
+	bool flagSeen = false;
+	while ( iss >> token ) {
+		if ( flagSeen ) {
+			return token;
+		}
+		if ( token == cmdlineFlag ) {
+			flagSeen = true;
+		}
+	}
+	return "";
+}
+
 class ChromiumApp
 	: public CefApp
 {
 public:
+	ChromiumApp( int remoteDebuggingPort ) : m_RemoteDebuggingPort( remoteDebuggingPort ) {}
+
 	//
 	// CefApp implementation
 	//
@@ -120,8 +177,10 @@ public:
 		// Disable site isolation until we implement passing registered Lua functions between processes
 		//command_line->AppendSwitch( "disable-site-isolation-trials" );
 
-		// Enable remote debugging; see also: settings.remote_debugging_port
-		//command_line->AppendSwitchWithValue( "remote-allow-origins", "http://localhost:9222" );
+		// Enable remote debugging origin only when a debugging port is set; see also settings.remote_debugging_port
+		if ( m_RemoteDebuggingPort != 0 ) {
+			command_line->AppendSwitchWithValue( "remote-allow-origins", "http://localhost:" + std::to_string( m_RemoteDebuggingPort ) );
+		}
 
 		// HACK: Force dark mode if the OS says it should be
 		// TODO/BUG: For some reason, OS theme detection is just straight up not working
@@ -139,6 +198,8 @@ public:
 	}
 
 private:
+	int m_RemoteDebuggingPort;
+
 	IMPLEMENT_REFCOUNTING( ChromiumApp );
 };
 
@@ -172,8 +233,22 @@ bool ChromiumSystem::Init( const char* pBaseDir, IHtmlResourceHandler* pResource
 
 	std::string strBaseDir = pBaseDir;
 
-	//settings.remote_debugging_port = 9222;
-	settings.remote_debugging_port = 0;
+	// Remote debugging is opt-in: Off unless the player sets -chromium_remote_debugging_port (or GMOD_CEF_REMOTE_DEBUGGING_PORT)
+	int remoteDebuggingPort = 0;
+	{
+		std::string portStr = GetChromiumLaunchOption( "-chromium_remote_debugging_port", "GMOD_CEF_REMOTE_DEBUGGING_PORT" );
+		if ( !portStr.empty() ) {
+			int port = atoi( portStr.c_str() );
+			if ( port >= 1024 && port <= 65535 ) {
+				remoteDebuggingPort = port;
+				LOG(INFO) << "GMOD_CEF_REMOTE_DEBUGGING_PORT: " << port;
+			} else {
+				LOG(WARNING) << "GMOD_CEF_REMOTE_DEBUGGING_PORT INVALID: " << portStr;
+			}
+		}
+	}
+
+	settings.remote_debugging_port = remoteDebuggingPort;
 	settings.windowless_rendering_enabled = true;
 
 #ifdef CEF_USE_SANDBOX
@@ -349,7 +424,7 @@ bool ChromiumSystem::Init( const char* pBaseDir, IHtmlResourceHandler* pResource
 	void* sandbox_info = nullptr;
 #endif
 
-	if ( !CefInitialize( main_args, settings, new ChromiumApp, sandbox_info ) )
+	if ( !CefInitialize( main_args, settings, new ChromiumApp( remoteDebuggingPort ), sandbox_info ) )
 	{
 		pResourceHandler->Message( "CefInitialize failed!\n" );
 		return false;
@@ -422,23 +497,17 @@ IHtmlClient* ChromiumSystem::CreateClient( IHtmlClientListener* listener )
 #endif
 
 	unsigned int fps_max = 60;
-	std::ifstream fps_max_file("GMOD_CEF_FPS_MAX.txt");
-
-	if ( fps_max_file.is_open() ) {
-		std::string fps_max_env;
-		getline(fps_max_file, fps_max_env);
-
-		unsigned int fps_max_env_int = atoi(fps_max_env.c_str());
-
-		if (fps_max_env_int && fps_max_env_int >= 1 && fps_max_env_int <= 60 ) {
-			fps_max = fps_max_env_int;
-			LOG(INFO) << "GMOD_CEF_FPS_MAX: " << fps_max_env_int;
-		} else {
-			LOG(WARNING) << "GMOD_CEF_FPS_MAX INVALID: " << fps_max_env;
+	{
+		std::string fpsStr = GetChromiumLaunchOption( "-chromium_fps_max", "GMOD_CEF_FPS_MAX" );
+		if ( !fpsStr.empty() ) {
+			int fpsInt = atoi( fpsStr.c_str() );
+			if ( fpsInt >= 1 && fpsInt <= 60 ) {
+				fps_max = fpsInt;
+				LOG(INFO) << "GMOD_CEF_FPS_MAX: " << fpsInt;
+			} else {
+				LOG(WARNING) << "GMOD_CEF_FPS_MAX INVALID: " << fpsStr;
+			}
 		}
-
-		fps_max_file.close();
-		// Can't delete it because it may be used by other CEF processes. Shutdown may also be called more than once.
 	}
 
 	CefBrowserSettings browserSettings;

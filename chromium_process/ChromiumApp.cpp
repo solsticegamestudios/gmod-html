@@ -260,7 +260,7 @@ void ChromiumApp::OnBeforeCommandLineProcessing( const CefString& process_type, 
 	// Disable site isolation until we implement passing registered Lua functions between processes
 	//command_line->AppendSwitch( "disable-site-isolation-trials" );
 
-	// Enable remote debugging; see also: settings.remote_debugging_port
+	// Remote debugging is opt-in and handled in the browser process (html_chromium); subprocesses don't host the DevTools server
 	//command_line->AppendSwitchWithValue( "remote-allow-origins", "http://localhost:9222" );
 
 	// HACK: Force dark mode if the OS says it should be

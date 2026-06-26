@@ -142,5 +142,6 @@ if(OS_LINUX OR OS_MAC)
 elseif(OS_WINDOWS)
 	target_link_options(${TARGET}
 		PUBLIC /DEBUG
-		PUBLIC /STACK:0x180000) # 1.5MiB stack reserve on Windows (matches facepunch's exes, fixes crashes on 32-bit)
+		PUBLIC /STACK:0x180000 # 1.5MiB stack reserve on Windows (matches facepunch's exes, fixes crashes on 32-bit)
+		PUBLIC /DELAYLOAD:libcef.dll) # Resolve from bin/ at first CEF call, not pre-WinMain when gmod.exe is at the game root
 endif()

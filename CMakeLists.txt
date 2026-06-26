@@ -92,9 +92,6 @@ add_subdirectory(example_host EXCLUDE_FROM_ALL)
 if("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux" OR "${CMAKE_SYSTEM_NAME}" STREQUAL "Darwin")
 	add_subdirectory(gmod_launcher)
 endif()
-if("${CMAKE_SYSTEM_NAME}" STREQUAL "Windows" AND NOT (CMAKE_SIZEOF_VOID_P MATCHES 8))
-	add_subdirectory(gmod_32bit_redirector)
-endif()
 
 # CEF symbol distribution (sibling of CEF_ROOT) and the dist dir its binaries land in
 set(CEF_SYMBOL_DIR "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/cef3/cef_binary_${CEF_VERSION}_${CEF_PLATFORM}_release_symbols")

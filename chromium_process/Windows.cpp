@@ -36,6 +36,37 @@
 typedef int (*LauncherMain_t)(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow);
 
 int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nCmdShow) {
+	// TODO: Unicode paths (GetModuleFileNameW, etc)
+	char executable_path[MAX_PATH] = { 0 };
+	GetModuleFileNameA(NULL, executable_path, MAX_PATH);
+
+	std::string::size_type last_slash = std::string(executable_path).find_last_of("\\/");
+	std::string executable_dir = std::string(executable_path).substr(0, last_slash);
+
+	// Find launcher.dll: Next to us (x86-64, gmod.exe in bin/), else bin\win64\ or bin\ (public/dev, gmod.exe at game root)
+	std::string bin_dir = executable_dir;
+	if (PathFileExistsA((executable_dir + "\\launcher.dll").c_str())) {
+		bin_dir = executable_dir;
+	}
+#ifdef ENVIRONMENT64
+	else if (PathFileExistsA((executable_dir + "\\bin\\win64\\launcher.dll").c_str())) {
+		bin_dir = executable_dir + "\\bin\\win64";
+	}
+#else
+	else if (PathFileExistsA((executable_dir + "\\bin\\launcher.dll").c_str())) {
+		bin_dir = executable_dir + "\\bin";
+	}
+#endif
+
+	// Make bin_dir searchable BEFORE any CEF call, so delay-loaded libcef.dll resolves when gmod.exe is at the game root
+	// Must run before the "--type=" subprocess branch too: That CEF subprocess also needs libcef.dll
+	SetDllDirectoryA(bin_dir.c_str());
+	std::string new_path = "PATH=" + bin_dir + ";";
+	if (const char* old_path = getenv("PATH")) {
+		new_path += old_path;
+	}
+	_putenv(new_path.c_str());
+
 	// Check if "--type=" is in the command arguments. If it is, we are a chromium subprocess.
 	if (strstr(lpCmdLine, "--type=")) {
 		void* sandbox_info = nullptr;
@@ -54,26 +85,9 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 		}
 	}
 
-	// TODO: Unicode paths (GetModuleFileNameW, etc)
-	char executable_path[MAX_PATH] = { 0 };
-	GetModuleFileNameA(NULL, executable_path, MAX_PATH);
-
-	std::string::size_type last_slash = std::string(executable_path).find_last_of("\\/");
-	std::string executable_dir = std::string(executable_path).substr(0, last_slash);
-
-#ifdef ENVIRONMENT64
-	executable_dir += "\\..\\..";
-#else
-	executable_dir += "\\..";
-	//MessageBoxA(NULL, "You may encounter stability issues with Garry's Mod in 32-bit.\n\nPlease consider using the x86-64 beta and launching in 64-bit mode if possible.", "32-bit Warning", 0);
-#endif
-
-	// NOTE: GMod's main branch does _chdir in launcher.dll, which will override this!
-	// We work around it in gmod_32bit_redirector by using -basedir
-	_chdir(executable_dir.c_str());
-
-	// Launch GarrysMod's main function from this process. We needed this so the "main" process could provide sandbox information above.
-	HMODULE hLauncher = LoadLibraryA("launcher.dll");
+	// launcher.dll derives the base dir from our module path and _chdir's there itself
+	// At the game root that's correct; in bin/ Source walks up from there to find the game
+	HMODULE hLauncher = LoadLibraryExA((bin_dir + "\\launcher.dll").c_str(), NULL, LOAD_WITH_ALTERED_SEARCH_PATH);
 	LauncherMain_t mainFn = (LauncherMain_t)(GetProcAddress(hLauncher, "LauncherMain"));
 
 	if (!mainFn) {

@@ -295,6 +295,10 @@ void ChromiumBrowser::SetFocused( bool hasFocus )
 // Validate against https://dvcs.w3.org/hg/d4e/raw-file/tip/key-event-test.html
 void ChromiumBrowser::SendKeyEvent( IHtmlClient::KeyEvent keyEvent )
 {
+	if ( m_BrowserHost == nullptr ) {
+		return;
+	}
+
 	CefKeyEvent chromiumKeyEvent;
 	chromiumKeyEvent.modifiers = GetModifiers( keyEvent.modifiers );
 

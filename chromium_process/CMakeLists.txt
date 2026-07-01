@@ -8,7 +8,7 @@ set(SOURCES_LINUX Linux.cpp)
 set(SOURCES_MAC macOS.cpp)
 
 set(SOURCES_WINDOWS Windows.cpp)
-set(RESOURCES_WINDOWS resources/win/gmod_icon.rc)
+set(RESOURCES_WINDOWS resources/win/gmod_icon.rc resources/win/gmod_version.rc)
 
 APPEND_PLATFORM_SOURCES(SOURCES)
 APPEND_PLATFORM_SOURCES(RESOURCES)
@@ -143,5 +143,7 @@ elseif(OS_WINDOWS)
 	target_link_options(${TARGET}
 		PUBLIC /DEBUG
 		PUBLIC /STACK:0x180000 # 1.5MiB stack reserve on Windows (matches facepunch's exes, fixes crashes on 32-bit)
-		PUBLIC /DELAYLOAD:libcef.dll) # Resolve from bin/ at first CEF call, not pre-WinMain when gmod.exe is at the game root
+		PUBLIC /DELAYLOAD:libcef.dll # Resolve from bin/ at first CEF call, not pre-WinMain when gmod.exe is at the game root
+		PUBLIC /MANIFEST:EMBED
+		PUBLIC "/MANIFESTINPUT:${CMAKE_CURRENT_SOURCE_DIR}/resources/win/gmod.manifest") # Embed our app manifest (DPI-aware, common-controls, supportedOS)
 endif()

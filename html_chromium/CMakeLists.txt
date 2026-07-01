@@ -57,6 +57,11 @@ elseif(OS_MAC)
 	dump_symbols_register(TARGET ${TARGET} DESTINATION "${INSTALL_OUT_DIR}/GarrysMod_Signed.app/Contents/MacOS" STRIP)
 endif()
 
+# Embed version info on Windows (original Facepunch DLL carries version info but no manifest)
+if(OS_WINDOWS)
+	target_sources(${TARGET} PRIVATE resources/win/html_chromium_version.rc)
+endif()
+
 # Always generate debug symbols
 if(OS_LINUX OR OS_MAC)
 	set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -g")

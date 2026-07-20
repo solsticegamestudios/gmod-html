@@ -81,11 +81,28 @@ static std::string GetChromiumLaunchOption( const char* cmdlineFlag, const char*
 	return "";
 }
 
+// Check a valueless -chromium_<x> launch option, else the GMOD_CEF_<X> env var; presence = on
+static bool HasChromiumLaunchOption( const char* cmdlineFlag, const char* envVar )
+{
+	if ( getenv( envVar ) ) {
+		return true;
+	}
+
+	std::istringstream iss( GetProcessCommandLine() );
+	std::string token;
+	while ( iss >> token ) {
+		if ( token == cmdlineFlag ) {
+			return true;
+		}
+	}
+	return false;
+}
+
 class ChromiumApp
 	: public CefApp
 {
 public:
-	ChromiumApp( int remoteDebuggingPort ) : m_RemoteDebuggingPort( remoteDebuggingPort ) {}
+	ChromiumApp( int remoteDebuggingPort, bool muteAudio ) : m_RemoteDebuggingPort( remoteDebuggingPort ), m_MuteAudio( muteAudio ) {}
 
 	//
 	// CefApp implementation
@@ -133,6 +150,11 @@ public:
 			command_line->AppendSwitchWithValue( "remote-allow-origins", "http://localhost:" + std::to_string( m_RemoteDebuggingPort ) );
 		}
 
+		// Mute all in-game browser audio when requested, ex. for a second -multirun instance
+		if ( m_MuteAudio ) {
+			command_line->AppendSwitch( "mute-audio" );
+		}
+
 		// prefers-color-scheme follows the OS natively now (CEF 137+) and tracks runtime theme changes; Windows relies on the SupportedOS manifest
 	}
 
@@ -144,6 +166,7 @@ public:
 
 private:
 	int m_RemoteDebuggingPort;
+	bool m_MuteAudio;
 
 	IMPLEMENT_REFCOUNTING( ChromiumApp );
 };
@@ -191,6 +214,12 @@ bool ChromiumSystem::Init( const char* pBaseDir, IHtmlResourceHandler* pResource
 				LOG(WARNING) << "GMOD_CEF_REMOTE_DEBUGGING_PORT INVALID: " << portStr;
 			}
 		}
+	}
+
+	// Audio mute is opt-in too, ex. a second -multirun instance whose sound would double up
+	bool muteAudio = HasChromiumLaunchOption( "-chromium_mute_audio", "GMOD_CEF_MUTE_AUDIO" );
+	if ( muteAudio ) {
+		LOG(INFO) << "GMOD_CEF_MUTE_AUDIO: on";
 	}
 
 	settings.remote_debugging_port = remoteDebuggingPort;
@@ -369,7 +398,7 @@ bool ChromiumSystem::Init( const char* pBaseDir, IHtmlResourceHandler* pResource
 	void* sandbox_info = nullptr;
 #endif
 
-	if ( !CefInitialize( main_args, settings, new ChromiumApp( remoteDebuggingPort ), sandbox_info ) )
+	if ( !CefInitialize( main_args, settings, new ChromiumApp( remoteDebuggingPort, muteAudio ), sandbox_info ) )
 	{
 		pResourceHandler->Message( "CefInitialize failed!\n" );
 		return false;

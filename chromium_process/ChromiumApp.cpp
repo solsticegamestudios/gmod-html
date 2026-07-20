@@ -11,7 +11,12 @@
 static bool V8ValueToCefValue( CefRefPtr<CefValue> outValue, const CefRefPtr<CefV8Value>& inValue, int depth = 0 )
 {
 	if ( depth > 16 )
-		return false;
+	{
+		// Truncate instead of failing: One too-deep leaf used to fail the whole call and throw into page JS
+		// The cap still bounds cyclic structures
+		outValue->SetString( "[max depth]" );
+		return true;
+	}
 
 	if ( inValue->IsNull() || inValue->IsUndefined() )
 	{
@@ -95,7 +100,12 @@ static bool V8ValuesToCefList( CefRefPtr<CefListValue>& outList, const CefV8Valu
 static bool CefValueToV8Value( CefRefPtr<CefV8Value>& outValue, const CefRefPtr<CefValue>& inValue, int depth = 0 )
 {
 	if ( depth > 16 )
-		return false;
+	{
+		// Truncate instead of failing: A too-deep value used to silently drop the whole callback
+		// The cap still bounds cyclic structures
+		outValue = CefV8Value::CreateString( "[max depth]" );
+		return true;
+	}
 
 	switch ( inValue->GetType() )
 	{

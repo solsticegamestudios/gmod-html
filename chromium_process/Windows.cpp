@@ -55,9 +55,12 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 	}
 #endif
 
-	// Make bin_dir searchable BEFORE any CEF call, so delay-loaded libcef.dll resolves when gmod.exe is at the game root
+	// Pre-load delay-loaded libcef.dll by full path BEFORE any CEF call, so it resolves when gmod.exe is at the game root
 	// Must run before the "--type=" subprocess branch too: That CEF subprocess also needs libcef.dll
-	SetDllDirectoryA(bin_dir.c_str());
+	// NOT SetDllDirectory: That removes CWD from the DLL search path and aborts garrysmod_common binary modules
+	LoadLibraryExA((bin_dir + "\\libcef.dll").c_str(), NULL, LOAD_WITH_ALTERED_SEARCH_PATH);
+
+	// Keep bin_dir on PATH for the bare-name libraries CEF loads at runtime
 	std::string new_path = "PATH=" + bin_dir + ";";
 	if (const char* old_path = getenv("PATH")) {
 		new_path += old_path;

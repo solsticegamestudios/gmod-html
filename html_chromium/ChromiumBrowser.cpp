@@ -22,7 +22,12 @@
 static bool CefValueToJSValue( JSValue& outValue, CefRefPtr<CefValue> inValue, int depth = 0 )
 {
 	if ( depth > 16 )
-		return false;
+	{
+		// Truncate instead of failing: One too-deep leaf used to silently drop the whole page->game call
+		// The cap still bounds cyclic structures
+		outValue = JSString::Create( "[max depth]" );
+		return true;
+	}
 
 	switch ( inValue->GetType() )
 	{
@@ -107,7 +112,12 @@ static bool CefListToJSValues( std::vector<JSValue>& outList, const CefRefPtr<Ce
 static bool JSValueToCefValue( CefRefPtr<CefValue>& outValue, const JSValue& inValue, int depth = 0 )
 {
 	if ( depth > 16 )
-		return false;
+	{
+		// Truncate instead of failing: A too-deep value used to silently drop the whole callback
+		// The cap still bounds cyclic structures
+		outValue->SetString( "[max depth]" );
+		return true;
+	}
 
 	switch ( inValue.GetType() )
 	{

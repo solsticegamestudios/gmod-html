@@ -44,8 +44,16 @@ static bool V8ValueToCefValue( CefRefPtr<CefValue> outValue, const CefRefPtr<Cef
 		{
 			auto newValue = CefValue::Create();
 
-			if ( !V8ValueToCefValue( newValue, inValue->GetValue( i ), depth + 1 ) )
+			// GetValue returns NULL when an accessor throws, ex. a Proxy getter; treat that slot as null
+			auto entry = inValue->GetValue( i );
+			if ( !entry )
+			{
+				newValue->SetNull();
+			}
+			else if ( !V8ValueToCefValue( newValue, entry, depth + 1 ) )
+			{
 				return false;
+			}
 
 			newList->SetValue( i, newValue );
 		}
@@ -62,8 +70,16 @@ static bool V8ValueToCefValue( CefRefPtr<CefValue> outValue, const CefRefPtr<Cef
 		{
 			auto newValue = CefValue::Create();
 
-			if ( !V8ValueToCefValue( newValue, inValue->GetValue( key ), depth + 1 ) )
+			// GetValue returns NULL when an accessor throws, ex. a Proxy getter; treat that slot as null
+			auto entry = inValue->GetValue( key );
+			if ( !entry )
+			{
+				newValue->SetNull();
+			}
+			else if ( !V8ValueToCefValue( newValue, entry, depth + 1 ) )
+			{
 				return false;
+			}
 
 			newMap->SetValue( key, newValue );
 		}

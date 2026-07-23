@@ -134,10 +134,10 @@ public:
 #endif
 
 		// https://bitbucket.org/chromiumembedded/cef/issues/2400
-		// DXVAVideoDecoding must be disabled for Proton/Wine
+		// DXVAVideoDecoding fails under Proton/Wine; OptimizationGuideModelExecution probes unshipped ChromeML and crashes Wine
 		// Disable HardwareMediaKeyHandling to prevent external control of media
 		// RelatedWebsiteSets (aka FirstPartySets) is an anti-privacy feature of Google's so-called "Privacy Sandbox"
-		command_line->AppendSwitchWithValue( "disable-features", "TouchpadAndWheelScrollLatching,AsyncWheelEvents,DXVAVideoDecoding,HardwareMediaKeyHandling,FirstPartySets,RelatedWebsiteSets" );
+		command_line->AppendSwitchWithValue( "disable-features", "TouchpadAndWheelScrollLatching,AsyncWheelEvents,DXVAVideoDecoding,HardwareMediaKeyHandling,FirstPartySets,RelatedWebsiteSets,OptimizationGuideModelExecution" );
 
 		// Auto-play media
 		command_line->AppendSwitchWithValue( "autoplay-policy", "no-user-gesture-required" );

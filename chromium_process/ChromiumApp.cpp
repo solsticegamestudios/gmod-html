@@ -1,13 +1,5 @@
 #include "ChromiumApp.h"
 
-#if _WIN32
-	#include <winreg.h>
-#endif
-
-#if __APPLE__
-	#include <Cocoa/Cocoa.h>
-#endif
-
 static bool V8ValueToCefValue( CefRefPtr<CefValue> outValue, const CefRefPtr<CefV8Value>& inValue, int depth = 0 )
 {
 	if ( depth > 16 )
@@ -198,53 +190,6 @@ static bool CefListToV8Values( CefV8ValueList& outList, const CefRefPtr<CefListV
 	return true;
 }
 
-// https://stackoverflow.com/a/70753913
-#ifdef _WIN32
-bool IsDarkMode() {
-	// The value is expected to be a REG_DWORD, which is a signed 32-bit little-endian
-	auto buffer = std::vector<char>(4);
-	auto cbData = static_cast<DWORD>(buffer.size() * sizeof(char));
-	auto res = RegGetValueW(
-		HKEY_CURRENT_USER,
-		L"Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize",
-		L"AppsUseLightTheme",
-		RRF_RT_REG_DWORD, // expected value type
-		nullptr,
-		buffer.data(),
-		&cbData);
-
-	if (res != ERROR_SUCCESS) {
-		return false;
-	}
-
-	// convert bytes written to our buffer to an int, assuming little-endian
-	auto i = int(buffer[3] << 24 |
-		buffer[2] << 16 |
-		buffer[1] << 8 |
-		buffer[0]);
-
-	return i == 0;
-}
-#endif
-
-#if __linux__
-bool IsDarkMode() {
-	// TODO: Not exactly sure how you're supposed to do this on Linux. GTK/Qt?
-	return false;
-}
-#endif
-
-// https://github.com/chromium/chromium/blob/main/ui/native_theme/native_theme_mac.mm#L35-L41
-#ifdef __APPLE__
-bool IsDarkMode() {
-	NSAppearanceName appearance =
-		[NSApp.effectiveAppearance bestMatchFromAppearancesWithNames:@[
-			NSAppearanceNameAqua, NSAppearanceNameDarkAqua
-		]];
-	return [appearance isEqual:NSAppearanceNameDarkAqua];
-}
-#endif
-
 //
 // CefApp interface
 //
@@ -289,13 +234,7 @@ void ChromiumApp::OnBeforeCommandLineProcessing( const CefString& process_type, 
 	// Remote debugging is opt-in and handled in the browser process (html_chromium); subprocesses don't host the DevTools server
 	//command_line->AppendSwitchWithValue( "remote-allow-origins", "http://localhost:9222" );
 
-	// HACK: Force dark mode if the OS says it should be
-	// TODO/BUG: For some reason, OS theme detection is just straight up not working
-	// It might be because we're running in Windowless/OSR mode, but yet, it works fine in CEFClient with `--off-screen-rendering-enabled`, so I'm sort of at a loss
-	// https://github.com/solsticegamestudios/GModPatchTool/issues/190
-	if (IsDarkMode()) {
-		command_line->AppendSwitch( "force-dark-mode" );
-	}
+	// prefers-color-scheme follows the OS natively now (CEF 137+) and tracks runtime theme changes; Windows relies on the SupportedOS manifest
 }
 
 void ChromiumApp::OnRegisterCustomSchemes( CefRawPtr<CefSchemeRegistrar> registrar )

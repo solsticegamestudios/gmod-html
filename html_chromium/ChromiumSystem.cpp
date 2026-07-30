@@ -133,7 +133,7 @@ public:
 		command_line->AppendSwitch( "use-mock-keychain" );
 #endif
 
-		// https://bitbucket.org/chromiumembedded/cef/issues/2400
+		// https://github.com/chromiumembedded/cef/issues/2400
 		// DXVAVideoDecoding fails under Proton/Wine; OptimizationGuideModelExecution probes unshipped ChromeML and crashes Wine
 		// Disable HardwareMediaKeyHandling to prevent external control of media
 		// RelatedWebsiteSets (aka FirstPartySets) is an anti-privacy feature of Google's so-called "Privacy Sandbox"

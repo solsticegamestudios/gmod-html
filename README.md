@@ -1,5 +1,5 @@
 # GMod HTML
-This is pretty much just an abstraction layer around The Chromium Embedded Framework (https://bitbucket.org/chromiumembedded/cef)
+This is pretty much just an abstraction layer around The Chromium Embedded Framework (https://github.com/chromiumembedded/cef)
 
 ## Chromium Embedded Framework Binary Distribution
 To work with this project you will need a build of the Chromium Embedded Framework. You can download prebuilt versions of CEF from Spotify's Automated Builder if you don't want to compile your own:

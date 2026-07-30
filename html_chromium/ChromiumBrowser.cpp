@@ -821,7 +821,7 @@ void ChromiumBrowser::OnAcceleratedPaint(CefRefPtr<CefBrowser> browser, CefRende
 {
 	// TODO: This should work again after CEF 127+. Implement it!
 	// TODO: See also ChromiumSystem::CreateClient
-	// https://bitbucket.org/chromiumembedded/cef/pull-requests/285/reimplement-shared-texture-support-for-viz
+	// https://github.com/chromiumembedded/cef/issues/2575
 
 	LOG(ERROR) << "ChromiumBrowser::OnAcceleratedPaint";
 }

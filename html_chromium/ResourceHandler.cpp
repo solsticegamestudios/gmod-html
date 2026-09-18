@@ -91,6 +91,9 @@ void ResourceHandler::GetResponseHeaders( CefRefPtr<CefResponse> response, int64
 	else if ( ext == "css" ) mimeType = "text/css";
 	else if ( ext == "js" ) mimeType = "text/javascript";
 	else if ( ext == "svg" ) mimeType = "image/svg+xml";
+	else if ( ext == "gif" ) mimeType = "image/gif";
+	else if ( ext == "webm" ) mimeType = "video/webm";
+	else if ( ext == "mp4" ) mimeType = "video/mp4";
 
 	response->SetStatus( 200 );
 	response->SetMimeType( mimeType );

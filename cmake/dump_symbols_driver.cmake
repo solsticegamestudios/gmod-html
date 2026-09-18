@@ -7,7 +7,7 @@ if(NOT DS_DUMP_SYMS)
 	return()
 endif()
 
-# Dump one binary: <source> (PDB on Windows, binary elsewhere) -> <output>.sym, then optional strip
+# Dump one binary: <source> (PDB or DLL on Windows, binary elsewhere) -> <output>.sym, then optional strip
 function(dump_one source output strip)
 	if(NOT EXISTS "${source}")
 		message(STATUS "Symbols: source missing, skipping ${source}")
@@ -52,7 +52,11 @@ if(DS_CEF_SYMBOL_DIR AND DS_CEF_BIN_DIR)
 		foreach(_pdb ${_cef_pdbs})
 			get_filename_component(_name "${_pdb}" NAME) # e.g. libcef.dll.pdb
 			string(REGEX REPLACE "\\.pdb$" "" _binname "${_name}") # libcef.dll
-			dump_one("${_pdb}" "${DS_CEF_BIN_DIR}/${_binname}.sym" 0)
+
+			# The DLL has to be the input for dump_syms to write INFO CODE_ID (and x64 STACK CFI), and it only finds the PDB next to it
+			file(CREATE_LINK "${_pdb}" "${DS_CEF_BIN_DIR}/${_name}" COPY_ON_ERROR)
+			dump_one("${DS_CEF_BIN_DIR}/${_binname}" "${DS_CEF_BIN_DIR}/${_binname}.sym" 0)
+			file(REMOVE "${DS_CEF_BIN_DIR}/${_name}")
 		endforeach()
 	else()
 		# Linux/macOS CEF - VERIFY the symbol-distribution layout at the next build there

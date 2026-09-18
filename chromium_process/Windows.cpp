@@ -61,41 +61,36 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 	std::string libcef_path = bin_dir + "\\libcef.dll";
 	HMODULE hLibcef = LoadLibraryExA(libcef_path.c_str(), NULL, LOAD_WITH_ALTERED_SEARCH_PATH);
 
+	// WARN: A bare "libcef.dll" load searches PATH, and other apps keep their own copy there (ex. NVIDIA App)
 	if (!hLibcef) {
-		// Grab the error now; the bare-name retry below would clobber it
 		DWORD err = GetLastError();
 
-		// Last chance: The normal search might still find one, ex. if bin_dir somehow came out wrong
-		hLibcef = LoadLibraryA("libcef.dll");
+		// We can't show UI from a subprocess (it might be sandboxed onto another desktop), and Chromium respawns it anyway
+		// 0xCEF0xxxx (xxxx = the Win32 error) so chromium.log's exit_code tells us why
+		if (strstr(lpCmdLine, "--type=")) {
+			return 0xCEF00000 | (err & 0xFFFF);
+		}
 
-		if (!hLibcef) {
-			// We can't show UI from a subprocess (it might be sandboxed onto another desktop), and Chromium respawns it anyway
-			// Exit 0xCEF0xxxx (xxxx = the Win32 error) so chromium.log's exit_code tells us why instead of a delay-load crash
-			if (strstr(lpCmdLine, "--type=")) {
-				return 0xCEF00000 | (err & 0xFFFF);
-			}
+		LPSTR err_msg = NULL;
+		FormatMessageA(
+			FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+			NULL,
+			err,
+			MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+			(LPSTR) &err_msg,
+			0,
+			NULL
+		);
 
-			LPSTR err_msg = NULL;
-			FormatMessageA(
-				FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
-				NULL,
-				err,
-				MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-				(LPSTR) &err_msg,
-				0,
-				NULL
-			);
+		std::string msg = "Couldn't load the Chromium html engine:\n" + libcef_path
+			+ "\n\nError " + std::to_string(err) + ": " + (err_msg ? err_msg : "<Couldn't format error message>")
+			+ "\nThe main menu and other web content will not work."
+			+ "\nDid your antivirus remove or block it?"
+			+ "\n\nRun GModPatchTool again, and include this exact error if you report the problem.";
+		MessageBoxA(NULL, msg.c_str(), "Launch Error: libcef.dll", MB_ICONERROR);
 
-			std::string msg = "Couldn't load the Chromium html engine:\n" + libcef_path
-				+ "\n\nError " + std::to_string(err) + ": " + (err_msg ? err_msg : "<Couldn't format error message>")
-				+ "\nThe main menu and other web content will not work."
-				+ "\nSomething may have removed or blocked the file (ex. antivirus)."
-				+ "\n\nRe-run GModPatchTool to repair the game, and include this exact error if you report the problem.";
-			MessageBoxA(NULL, msg.c_str(), "Launch Error: libcef.dll", MB_ICONERROR);
-
-			if (err_msg) {
-				LocalFree(err_msg);
-			}
+		if (err_msg) {
+			LocalFree(err_msg);
 		}
 	}
 

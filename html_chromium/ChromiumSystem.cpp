@@ -519,9 +519,10 @@ void ChromiumSystem::Update()
 #endif
 
 	// This is where messages from the browser UI thread come to the main thread
-	for ( auto client : m_ActiveClients )
+	// NOTE: Clients can be created or closed from inside these callbacks (ex. Lua making a DHTML panel), so don't hold iterators
+	for ( size_t i = 0; i < m_ActiveClients.size(); i++ )
 	{
-		client->Update();
+		m_ActiveClients[i]->Update();
 	}
 }
 

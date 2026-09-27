@@ -85,11 +85,12 @@ void ResourceHandler::GetResponseHeaders( CefRefPtr<CefResponse> response, int64
 	CefString mimeType = "text/html";
 
 	auto ext = GetFileExtension( m_Path );
-	if ( ext == "png" ) mimeType = "image/png";
+	if ( ext == "png" || m_Host == "mapimage" ) mimeType = "image/png";
 	else if ( ext == "jpg" ) mimeType = "image/jpg";
 	else if ( ext == "jpeg" ) mimeType = "image/jpg";
 	else if ( ext == "css" ) mimeType = "text/css";
 	else if ( ext == "js" ) mimeType = "text/javascript";
+	// Helpers for the community
 	else if ( ext == "svg" ) mimeType = "image/svg+xml";
 	else if ( ext == "gif" ) mimeType = "image/gif";
 	else if ( ext == "webm" ) mimeType = "video/webm";

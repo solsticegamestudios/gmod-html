@@ -1,5 +1,7 @@
 #pragma once
 
+#include <algorithm>
+
 #include "cef_start.h"
 #include "include/cef_base.h"
 #include "include/base/cef_lock.h"
@@ -33,11 +35,12 @@ public:
 
 	bool ResizeData(int wide, int tall)
 	{
-		bool resized = wide * tall * 4 > m_Size;
+		size_t size = static_cast<size_t>( wide ) * static_cast<size_t>( tall ) * 4;
+		bool resized = size > m_Size;
 		if ( resized )
 		{
 			unsigned char* old_Data = m_Data;
-			m_Size = wide * tall * 4;
+			m_Size = size;
 			m_Data = new unsigned char[m_Size];
 			delete[] old_Data;
 		}
@@ -62,18 +65,32 @@ public:
 		m_Dirty = true;
 	}
 
-	void BlitRelative( const unsigned char* data, int x, int y, int width, int height )
+	void CopyImage( const unsigned char* data, int x, int y, int w, int h )
 	{
-		if ( x + width > m_Wide || y + height > m_Tall ) {
-			LOG(WARNING) << "Invalid BlitRelative!";
+		if ( w < 0 || h < 0 || !data || !m_Data )
+		{
 			return;
 		}
 
-		for ( int SrcY = 0; SrcY < height; SrcY++ )
+		const int dstX = std::max( 0, x );
+		const int dstY = std::max( 0, y );
+		const int srcX = std::max( 0, -x );
+		const int srcY = std::max( 0, -y );
+
+		const int copyW = std::min( w - srcX, m_Wide - dstX );
+		const int copyH = std::min( h - srcY, m_Tall - dstY );
+
+		if ( copyW > 0 && copyH > 0 )
 		{
-			memcpy( &m_Data[( SrcY + y ) * m_Wide * 4 + x * 4], &data[SrcY * width * 4], width * 4 );
+			for ( int row = 0; row < copyH; ++row )
+			{
+				const size_t dstOffset = static_cast<size_t>( ( dstY + row ) * m_Wide + dstX ) * 4;
+				const size_t srcOffset = static_cast<size_t>( ( srcY + row ) * w + srcX ) * 4;
+				memcpy( &m_Data[dstOffset], &data[srcOffset], static_cast<size_t>( copyW ) * 4 );
+			}
+
+			m_Dirty = true;
 		}
-		m_Dirty = true;
 	}
 
 	void SetData( const unsigned char* data, int wide, int tall )
@@ -84,7 +101,7 @@ public:
 			ResizeData(wide, tall);
 		}
 
-		memcpy( m_Data, data, wide * tall * 4 );
+		memcpy( m_Data, data, static_cast<size_t>( wide ) * static_cast<size_t>( tall ) * 4 );
 		m_Dirty = true;
 	}
 
@@ -105,13 +122,16 @@ public:
 		m_Dirty = dirty;
 	}
 
+	ImageData( const ImageData& ) = delete;
+	ImageData& operator=( const ImageData& ) = delete;
+
 private:
 	friend class ChromiumBrowser;
 	bool m_Dirty;
 
 	int m_Wide;
 	int m_Tall;
-	int m_Size;
+	size_t m_Size;
 
 	base::Lock m_Lock;
 	unsigned char* m_Data;

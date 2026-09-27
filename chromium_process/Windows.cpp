@@ -32,10 +32,64 @@
 
 typedef int (*LauncherMain_t)(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow);
 
+#ifdef ENVIRONMENT32
+// Starts gmod_win64.exe with our arguments under the same rules as the stock launcher; true if it's running
+static bool RelaunchAs64Bit(const std::string& executable_path, LPSTR lpCmdLine) {
+	BOOL is_wow64 = FALSE;
+	if (!IsWow64Process(GetCurrentProcess(), &is_wow64) || !is_wow64) {
+		return false;
+	}
+
+	// x86-64's bin\gmod.exe has no gmod_win64.exe next to it, so it stays 32-bit
+	std::string executable_path_64 = executable_path.substr(0, executable_path.find_last_of('.')) + "_win64.exe";
+	if (!PathFileExistsA(executable_path_64.c_str())) {
+		return false;
+	}
+
+	bool force_64bit = false;
+	std::string game_dir = "garrysmod";
+	for (int i = 1; i < __argc; i++) {
+		if (strcmp(__argv[i], "-game") == 0 && i + 1 < __argc) {
+			game_dir = __argv[++i];
+		} else if (strcmp(__argv[i], "-force32bit") == 0) {
+			return false;
+		} else if (strcmp(__argv[i], "-force64bit") == 0) {
+			force_64bit = true;
+			break;
+		}
+	}
+
+	if (!force_64bit && !PathFileExistsA((game_dir + "\\bin\\win64\\server.dll").c_str())) {
+		return false;
+	}
+
+	std::string command_line = "\"" + executable_path_64 + "\" " + lpCmdLine;
+
+	STARTUPINFOA startup_info;
+	GetStartupInfoA(&startup_info);
+
+	PROCESS_INFORMATION process_info;
+	if (!CreateProcessA(executable_path_64.c_str(), &command_line[0], NULL, NULL, TRUE, 0, NULL, NULL, &startup_info, &process_info)) {
+		return false;
+	}
+
+	CloseHandle(process_info.hThread);
+	CloseHandle(process_info.hProcess);
+	return true;
+}
+#endif
+
 int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nCmdShow) {
 	// TODO: Unicode paths (GetModuleFileNameW, etc)
 	char executable_path[MAX_PATH] = { 0 };
 	GetModuleFileNameA(NULL, executable_path, MAX_PATH);
+
+#ifdef ENVIRONMENT32
+	// Not for CEF subprocesses: They have to match the game process that spawned them
+	if (!strstr(lpCmdLine, "--type=") && RelaunchAs64Bit(executable_path, lpCmdLine)) {
+		return 0;
+	}
+#endif
 
 	std::string::size_type last_slash = std::string(executable_path).find_last_of("\\/");
 	std::string executable_dir = std::string(executable_path).substr(0, last_slash);
